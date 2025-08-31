@@ -5,7 +5,6 @@ from graphene_django.filter import DjangoFilterConnectionField
 from .models import Customer, Product, Order
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
-
 # ----------------------
 # GraphQL Types with Relay Nodes
 # ----------------------
@@ -70,3 +69,36 @@ class Query(graphene.ObjectType):
         if order_by:
             qs = qs.order_by(*order_by)
         return qs
+
+
+# ----------------------
+# Mutations
+# ----------------------
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass  # no arguments needed
+
+    success = graphene.Boolean()
+    updated_products = graphene.List(ProductNode)
+    message = graphene.String()
+
+    def mutate(root, info):
+        # Query products with stock < 10
+        low_stock_products = Product.objects.filter(stock__lt=10)
+
+        updated_list = []
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_list.append(product)
+
+        return UpdateLowStockProducts(
+            success=True,
+            updated_products=updated_list,
+            message=f"{len(updated_list)} product(s) restocked successfully."
+        )
+
+
+class Mutation(graphene.ObjectType):
+    update_low_stock_products = UpdateLowStockProducts.Field()
+    # add other mutations here if any
